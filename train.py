@@ -18,6 +18,7 @@ Because the number of images is smaller in the person keypoint subset of COCO,
 the number of epochs should be adapted so that we have the same number of iterations.
 """
 import datetime
+import hashlib
 import os
 import time
 import comet_ml
@@ -163,8 +164,24 @@ def get_args_parser(add_help=True):
 
     # modifications
     parser.add_argument("--comet", type=str, default="notset")
+    parser.add_argument("--run_id", type=str, default="example1")
 
     return parser
+
+PROJECT_NAME = os.environ.get("COMET_PROJECT_NAME", "pytorch-maskrcnn")
+
+def get_experiment(run_id):
+    experiment_id = hashlib.sha1(run_id.encode("utf-8")).hexdigest()
+    os.environ["COMET_EXPERIMENT_KEY"] = experiment_id
+
+    api = comet_ml.API()  # Assumes API key is set in config/env
+    api_experiment = api.get_experiment_by_key(experiment_id)
+
+    if api_experiment is None:
+        return comet_ml.Experiment(project_name=PROJECT_NAME)
+
+    else:
+        return comet_ml.ExistingExperiment(project_name=PROJECT_NAME)
 
 def get_instance_segmentation_model(num_classes):
     # load an instance segmentation model pre-trained on COCO
@@ -188,13 +205,6 @@ def get_instance_segmentation_model(num_classes):
 def main(args):
     if args.output_dir:
         utils.mkdir(args.output_dir)
-
-    if args.comet != "notset":
-        experiment = comet_ml.Experiment(
-            api_key=args.comet,
-            project_name="maskrcnn"
-        )
-
 
     utils.init_distributed_mode(args)
     print(args)
@@ -340,4 +350,7 @@ def main(args):
 
 if __name__ == "__main__":
     args = get_args_parser().parse_args()
+    if args.comet != "notset":
+        os.environ['COMET_API_KEY'] = args.comet
+        experiment = get_experiment(args.run_id)
     main(args)
