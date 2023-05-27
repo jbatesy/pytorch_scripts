@@ -20,6 +20,7 @@ the number of epochs should be adapted so that we have the same number of iterat
 import datetime
 import os
 import time
+import comet_ml
 
 import presets
 import torch
@@ -160,6 +161,9 @@ def get_args_parser(add_help=True):
         help="Use CopyPaste data augmentation. Works only with data-augmentation='lsj'.",
     )
 
+    # modifications
+    parser.add_argument("--comet", type=str, default="notset")
+
     return parser
 
 def get_instance_segmentation_model(num_classes):
@@ -184,6 +188,13 @@ def get_instance_segmentation_model(num_classes):
 def main(args):
     if args.output_dir:
         utils.mkdir(args.output_dir)
+
+    if args.comet != "notset":
+        experiment = comet_ml.Experiment(
+            api_key=args.comet,
+            project_name="maskrcnn"
+        )
+
 
     utils.init_distributed_mode(args)
     print(args)
